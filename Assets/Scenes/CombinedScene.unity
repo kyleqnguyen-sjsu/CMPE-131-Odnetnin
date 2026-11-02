@@ -266,6 +266,34 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 6285581445603940679, guid: ab54f8e09ea014b11b413e839499ef78, type: 3}
+      propertyPath: maxSpeed
+      value: 45
+      objectReference: {fileID: 0}
+    - target: {fileID: 6285581445603940679, guid: ab54f8e09ea014b11b413e839499ef78, type: 3}
+      propertyPath: motorTorque
+      value: 165
+      objectReference: {fileID: 0}
+    - target: {fileID: 6285581445603940679, guid: ab54f8e09ea014b11b413e839499ef78, type: 3}
+      propertyPath: reverseSpeed
+      value: 35
+      objectReference: {fileID: 0}
+    - target: {fileID: 6285581445603940679, guid: ab54f8e09ea014b11b413e839499ef78, type: 3}
+      propertyPath: maxSteerAngle
+      value: 25
+      objectReference: {fileID: 0}
+    - target: {fileID: 6285581445603940679, guid: ab54f8e09ea014b11b413e839499ef78, type: 3}
+      propertyPath: assistFullSpeed
+      value: 35
+      objectReference: {fileID: 0}
+    - target: {fileID: 6285581445603940679, guid: ab54f8e09ea014b11b413e839499ef78, type: 3}
+      propertyPath: steeringResponse
+      value: 100
+      objectReference: {fileID: 0}
+    - target: {fileID: 6285581445603940679, guid: ab54f8e09ea014b11b413e839499ef78, type: 3}
+      propertyPath: throttleResponse
+      value: 1.5
+      objectReference: {fileID: 0}
     - target: {fileID: 6441000988994201609, guid: ab54f8e09ea014b11b413e839499ef78, type: 3}
       propertyPath: m_Enabled
       value: 0

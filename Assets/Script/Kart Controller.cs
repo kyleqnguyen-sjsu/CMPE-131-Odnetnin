@@ -118,7 +118,7 @@ public class KartController : MonoBehaviour
                 0f
             );
         }
-
+        motorTorque = motorTorque * 20f; // Adjust for Unity units (m/s)
         if (frontLeftWheel == null ||
             frontRightWheel == null ||
             rearLeftWheel == null ||
