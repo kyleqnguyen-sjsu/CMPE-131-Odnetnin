@@ -1,32 +1,40 @@
-
+using System.Collections.Generic;
 using UnityEngine;
 
 public class RaceCheckpoint : MonoBehaviour
 {
-    public LapCounter lapCounter;
-    public Rigidbody playerCar;
+    public int checkpointID = 1;
+    public bool master = false;
 
-    // 0 = Finish Line
-    // 1 = Checkpoint 1
-    // 2 = Checkpoint 2
-    public int checkpointID;
+    private static readonly List<RaceCheckpoint> all = new List<RaceCheckpoint>();
+    private LapCounter lapCounter;
 
-    void OnTriggerEnter(Collider other)
+    private void OnEnable()
     {
-        if (lapCounter == null || playerCar == null)
-            return;
+        all.Add(this);
+        lapCounter = FindAnyObjectByType<LapCounter>();
+    }
 
-        // Only detect our player's car
-        if (other.attachedRigidbody != playerCar)
-            return;
+    private void OnDisable()
+    {
+        all.Remove(this);
+    }
 
-        if (checkpointID == 0)
+    private void OnTriggerEnter(Collider other)
+    {
+        if (lapCounter == null) return;
+
+        Rigidbody rb = other.attachedRigidbody;
+        if (rb == null || !rb.CompareTag("Player")) return;
+
+        if (!lapCounter.ReachCheckpoint(checkpointID, master)) return;
+
+        // Shift this ID and every branch sharing it into the next lap's range
+        int hitID = checkpointID;
+        foreach (var checkpoint in all)
         {
-            lapCounter.ReachFinishLine();
-        }
-        else
-        {
-            lapCounter.ReachCheckpoint(checkpointID);
+            if (checkpoint.checkpointID == hitID)
+                checkpoint.checkpointID += lapCounter.totalCheckpointIDs;
         }
     }
 }
