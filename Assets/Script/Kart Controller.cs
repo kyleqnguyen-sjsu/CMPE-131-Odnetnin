@@ -18,123 +18,76 @@ public class KartController : MonoBehaviour
     public Transform rearRightMesh;
 
     [Header("Engine")]
-    public float motorTorque = 2800f;
-    public float maxSpeed = 35f;
-    public float reverseSpeed = 15f;
-    public float throttleResponse = 2.5f;
+    public float motorTorqueNm = 28000f;
+    public float maxSpeedMps = 35f;
+    public float reverseSpeedMps = 15f;
+    public float throttleResponsePerSec = 2.5f;
 
     [Header("Braking")]
-    public float brakeForce = 6000f;
-    public float bothKeysBrakeForce = 7000f;
-    public float idleBrakeForce = 250f;
-    public float brakeResponse = 5f;
-    public float stopThreshold = 0.5f;
+    public float brakeTorqueNm = 6000f;
+    public float idleBrakeTorqueNm = 250f;
 
     [Header("Steering")]
-    public float maxSteerAngle = 28f;
-    public float steeringResponse = 160f;
-    public float highSpeedSteerMultiplier = 0.7f;
+    public float maxSteerAngleDeg = 28f;
+    public float steeringResponseDegPerSec = 160f;
 
-    [Header("Drift")]
-    public float minimumDriftSpeed = 12f;
-    public float driftExitSpeed = 6f;
-    public float driftSteerAngle = 34f;
-    public float driftBuildSpeed = 0.6f;
-    public float counterSteerRecovery = 1.8f;
+    [Header("Traction")]
+    [Range(0.1f, 2f)]
+    public float normalTraction = 1f;
 
-    [Header("Drift Traction")]
-    public float driftGrip = 0.82f;
-    public float minimumDriftGrip = 0.68f;
-    public float gripChangeSpeed = 2f;
-    public float gripRecoverySpeed = 3.5f;
+    [Range(0.1f, 2f)]
+    public float driftTraction = 0.72f;
 
-    [Header("Drift Momentum")]
-    public float normalDamping = 0.02f;
-    public float driftDamping = 0.22f;
-    public float dampingResponse = 2f;
-    public float driftMotorMultiplier = 0.90f;
+    [Header("Drifting")]
+    public float minDriftSpeedMps = 12f;
+    public float driftSteerAngleDeg = 34f;
 
     [Header("Stability")]
-    public bool useCustomCenterOfMass = true;
-    public float centerOfMassOffsetY = -0.35f;
-
-    [Header("Slide Recovery")]
-    public bool enableSlideRecovery = true;
-    public float slideRecoveryAngle = 35f;
-    public float slideRecoveryExitAngle = 15f;
-    public float slideRecoveryMinSpeed = 8f;
-
-    // NEW: Arcade Drift 6.0 - Phase 1
-    [Header("Arcade Cornering Assist")]
-    public bool enableCorneringAssist = true;
-    public float assistMinSpeed = 14f;
-    public float assistFullSpeed = 25f;
-    public float assistAcceleration = 8f;
-    public float assistMaxSlipAngle = 50f;
-    public float assistResponse = 5f;
-
-    [Header("Debug")]
-    public bool showDebug = false;
-    public bool showWheelSlipDebug = true;
-    public float debugInterval = 0.5f;
+    public float centerOfMassYMeters = -0.35f;
 
     private Rigidbody rb;
+
+    private float throttle;
+    private float steering;
+    private float currentSteering;
+    private float currentTraction = 1f;
+
+    private float originalLeftGrip;
+    private float originalRightGrip;
 
     private bool gasPressed;
     private bool brakePressed;
     private bool spacePressed;
-
-    private float steeringInput;
-    private float throttleAmount;
-    private float currentBrake;
-    private float currentSteering;
-    private float currentGrip = 1f;
-
     private bool isDrifting;
-    private float driftDirection;
-    private float driftTightness;
 
-    private bool recoveringFromSlide;
+    public bool IsDrifting => isDrifting;
 
-    // NEW
-    private float currentAssist;
+    public float CurrentSpeed =>
+        rb != null ? rb.linearVelocity.magnitude : 0f;
 
-    private float originalRearLeftGrip;
-    private float originalRearRightGrip;
-    private float originalDamping;
-
-    private float debugTimer;
+    public float ThrottleAmount => throttle;
 
     void Start()
     {
         rb = GetComponent<Rigidbody>();
-        originalDamping = rb.linearDamping;
 
-        if (useCustomCenterOfMass)
-        {
-            rb.centerOfMass = new Vector3(
-                0f,
-                centerOfMassOffsetY,
-                0f
-            );
-        }
-        motorTorque = motorTorque * 20f; // Adjust for Unity units (m/s)
         if (frontLeftWheel == null ||
             frontRightWheel == null ||
             rearLeftWheel == null ||
             rearRightWheel == null)
         {
-            Debug.LogError(
-                "Assign all four WheelColliders!"
-            );
+            Debug.LogError("Assign all 4 WheelColliders!");
             enabled = false;
             return;
         }
 
-        originalRearLeftGrip =
+        rb.centerOfMass =
+            new Vector3(0f, centerOfMassYMeters, 0f);
+
+        originalLeftGrip =
             rearLeftWheel.sidewaysFriction.stiffness;
 
-        originalRearRightGrip =
+        originalRightGrip =
             rearRightWheel.sidewaysFriction.stiffness;
     }
 
@@ -145,7 +98,7 @@ public class KartController : MonoBehaviour
             gasPressed = false;
             brakePressed = false;
             spacePressed = false;
-            steeringInput = 0f;
+            steering = 0f;
             return;
         }
 
@@ -156,12 +109,8 @@ public class KartController : MonoBehaviour
         bool left = Keyboard.current.aKey.isPressed;
         bool right = Keyboard.current.dKey.isPressed;
 
-        steeringInput = 0f;
-
-        if (left && !right)
-            steeringInput = -1f;
-        else if (right && !left)
-            steeringInput = 1f;
+        steering = left == right ? 0f :
+                   left ? -1f : 1f;
     }
 
     void FixedUpdate()
@@ -174,470 +123,130 @@ public class KartController : MonoBehaviour
             );
 
         float forwardSpeed = localVelocity.z;
+        float speed = rb.linearVelocity.magnitude;
 
-        Vector3 flatVelocity =
-            Vector3.ProjectOnPlane(
-                rb.linearVelocity,
-                Vector3.up
-            );
+        HandleDrift(forwardSpeed, dt);
+        HandleSteering(speed, dt);
+        HandleEngine(forwardSpeed, dt);
+    }
 
-        float speed = flatVelocity.magnitude;
-
-        float slipAngle = Mathf.Atan2(
-            localVelocity.x,
-            Mathf.Max(
-                0.1f,
-                Mathf.Abs(forwardSpeed)
-            )
-        ) * Mathf.Rad2Deg;
-
-        // =========================
-        // DRIFT STATE
-        // =========================
-
-        bool shouldExitDrift =
-            !spacePressed ||
-            brakePressed ||
-            speed < driftExitSpeed;
-
-        if (isDrifting && shouldExitDrift)
-        {
-            isDrifting = false;
-            driftTightness = 0f;
-            driftDirection = 0f;
-        }
-
-        if (!isDrifting &&
+    void HandleDrift(float forwardSpeed, float dt)
+    {
+        isDrifting =
             spacePressed &&
             !brakePressed &&
-            forwardSpeed >= minimumDriftSpeed &&
-            Mathf.Abs(steeringInput) > 0.1f)
-        {
-            isDrifting = true;
-            driftDirection = Mathf.Sign(steeringInput);
-            driftTightness = 0.15f;
-        }
+            forwardSpeed >= minDriftSpeedMps &&
+            Mathf.Abs(steering) > 0.1f;
 
-        if (isDrifting)
-        {
-            if (Mathf.Abs(steeringInput) > 0.1f)
-            {
-                if (steeringInput == driftDirection)
-                {
-                    driftTightness +=
-                        driftBuildSpeed * dt;
-                }
-                else
-                {
-                    driftTightness -=
-                        counterSteerRecovery * dt;
-                }
-            }
-            else
-            {
-                driftTightness -= 0.3f * dt;
-            }
+        float targetTraction =
+            isDrifting ? driftTraction : normalTraction;
 
-            driftTightness =
-                Mathf.Clamp01(driftTightness);
-        }
-
-        // =========================
-        // STEERING
-        // =========================
-
-        float speedFactor = Mathf.Clamp01(
-            speed / Mathf.Max(1f, maxSpeed)
+        currentTraction = Mathf.MoveTowards(
+            currentTraction,
+            targetTraction,
+            3f * dt
         );
 
-        float steeringMultiplier = Mathf.Lerp(
-            1f,
-            highSpeedSteerMultiplier,
-            speedFactor
-        );
+        ApplyRearTraction(currentTraction);
+    }
 
-        float steeringLimit = maxSteerAngle;
+    void HandleSteering(float speed, float dt)
+    {
+        float speedRatio =
+            Mathf.Clamp01(speed / Mathf.Max(1f, maxSpeedMps));
 
-        if (isDrifting &&
-            steeringInput == driftDirection)
-        {
-            steeringLimit = Mathf.Lerp(
-                maxSteerAngle,
-                driftSteerAngle,
-                driftTightness
-            );
-        }
+        float steeringMultiplier =
+            Mathf.Lerp(1f, 0.7f, speedRatio);
+
+        float angle = isDrifting
+            ? driftSteerAngleDeg
+            : maxSteerAngleDeg;
 
         float targetSteering =
-            steeringInput *
-            steeringLimit *
-            steeringMultiplier;
+            steering * angle * steeringMultiplier;
 
         currentSteering = Mathf.MoveTowards(
             currentSteering,
             targetSteering,
-            steeringResponse * dt
+            steeringResponseDegPerSec * dt
         );
 
         frontLeftWheel.steerAngle = currentSteering;
         frontRightWheel.steerAngle = currentSteering;
+    }
 
-        // =========================
-        // DRIFT GRIP
-        // =========================
-
-        float targetGrip = 1f;
-
-        if (isDrifting)
-        {
-            targetGrip = Mathf.Lerp(
-                driftGrip,
-                minimumDriftGrip,
-                driftTightness
-            );
-        }
-
-        float gripSpeed = isDrifting
-            ? gripChangeSpeed
-            : gripRecoverySpeed;
-
-        currentGrip = Mathf.MoveTowards(
-            currentGrip,
-            targetGrip,
-            gripSpeed * dt
-        );
-
-        ApplyRearGrip(currentGrip);
-
-        // =========================
-        // SLIDE RECOVERY (5.2)
-        // =========================
-
-        bool wantsForward =
-            gasPressed && !brakePressed;
-
-        bool wantsReverse =
-            brakePressed && !gasPressed;
-
-        float absoluteSlip = Mathf.Abs(slipAngle);
-
-        if (!enableSlideRecovery || !wantsForward)
-        {
-            recoveringFromSlide = false;
-        }
-        else if (!recoveringFromSlide)
-        {
-            if (speed >= slideRecoveryMinSpeed &&
-                absoluteSlip >= slideRecoveryAngle)
-            {
-                recoveringFromSlide = true;
-            }
-        }
-        else
-        {
-            if (speed < slideRecoveryMinSpeed ||
-                (absoluteSlip <= slideRecoveryExitAngle &&
-                 forwardSpeed >= 0f))
-            {
-                recoveringFromSlide = false;
-            }
-        }
-
-        // =========================
-        // ENGINE AND BRAKING
-        // =========================
-
-        bool bothKeys = gasPressed && brakePressed;
-
-        bool movingForward =
-            forwardSpeed > stopThreshold;
-
-        bool movingBackward =
-            forwardSpeed < -stopThreshold;
-
-        float targetThrottle = 0f;
-        float targetBrake = 0f;
+    void HandleEngine(float forwardSpeed, float dt)
+    {
         float driveDirection = 0f;
+        float targetBrake = 0f;
 
-        if (bothKeys)
+        if (gasPressed && brakePressed)
         {
-            targetBrake = bothKeysBrakeForce;
+            targetBrake = brakeTorqueNm;
         }
-        else if (wantsForward)
+        else if (gasPressed)
         {
-            if (movingBackward && !recoveringFromSlide)
-            {
-                targetBrake = brakeForce;
-            }
+            if (forwardSpeed < -0.5f)
+                targetBrake = brakeTorqueNm;
             else
-            {
-                targetThrottle = 1f;
                 driveDirection = 1f;
-            }
         }
-        else if (wantsReverse)
+        else if (brakePressed)
         {
-            if (movingForward)
-            {
-                targetBrake = brakeForce;
-            }
+            if (forwardSpeed > 0.5f)
+                targetBrake = brakeTorqueNm;
             else
-            {
-                targetThrottle = 1f;
                 driveDirection = -1f;
-            }
         }
         else
         {
-            targetBrake = idleBrakeForce;
+            targetBrake = idleBrakeTorqueNm;
         }
 
-        throttleAmount = Mathf.MoveTowards(
-            throttleAmount,
+        float targetThrottle =
+            driveDirection == 0f ? 0f : 1f;
+
+        throttle = Mathf.MoveTowards(
+            throttle,
             targetThrottle,
-            throttleResponse * dt
+            throttleResponsePerSec * dt
         );
 
-        currentBrake = Mathf.MoveTowards(
-            currentBrake,
-            targetBrake,
-            brakeForce * brakeResponse * dt
-        );
+        float limit = driveDirection > 0f
+            ? maxSpeedMps : reverseSpeedMps;
+
+        float directionSpeed = driveDirection > 0f
+            ? Mathf.Max(0f, forwardSpeed)
+            : Mathf.Max(0f, -forwardSpeed);
+
+        float speedRatio =
+            Mathf.Clamp01(
+                directionSpeed / Mathf.Max(0.1f, limit)
+            );
+
+        float powerFactor =
+            1f - speedRatio * speedRatio;
 
         float motor = 0f;
 
-        if (driveDirection != 0f &&
-            targetBrake == 0f)
+        if (driveDirection != 0f)
         {
-            float speedLimit =
-                driveDirection > 0f
-                    ? maxSpeed
-                    : reverseSpeed;
-
-            float directionSpeed =
-                driveDirection > 0f
-                    ? Mathf.Max(0f, forwardSpeed)
-                    : Mathf.Max(0f, -forwardSpeed);
-
-            float powerFactor =
-                GetPowerFactor(
-                    directionSpeed,
-                    speedLimit
-                );
-
-            motor =
-                motorTorque *
-                throttleAmount *
-                powerFactor *
-                driveDirection;
-
-            if (isDrifting)
-                motor *= driftMotorMultiplier;
+            motor = motorTorqueNm *
+                    throttle *
+                    powerFactor *
+                    driveDirection;
         }
-
-        if (targetBrake > 0f)
-            motor = 0f;
 
         rearLeftWheel.motorTorque = motor;
         rearRightWheel.motorTorque = motor;
 
-        frontLeftWheel.brakeTorque = currentBrake;
-        frontRightWheel.brakeTorque = currentBrake;
-        rearLeftWheel.brakeTorque = currentBrake;
-        rearRightWheel.brakeTorque = currentBrake;
-
-        // =========================
-        // DRIFT MOMENTUM
-        // =========================
-
-        float targetDamping = isDrifting
-            ? driftDamping
-            : normalDamping;
-
-        rb.linearDamping = Mathf.MoveTowards(
-            rb.linearDamping,
-            targetDamping,
-            dampingResponse * dt
-        );
-
-        // =========================
-        // NEW: ARCADE CORNERING ASSIST
-        // =========================
-
-        ApplyArcadeCorneringAssist(
-            speed,
-            forwardSpeed,
-            slipAngle,
-            flatVelocity,
-            dt
-        );
-
-        // =========================
-        // DEBUG
-        // =========================
-
-        if (showDebug)
-        {
-            debugTimer += dt;
-
-            if (debugTimer >=
-                Mathf.Max(0.1f, debugInterval))
-            {
-                debugTimer = 0f;
-
-                Debug.Log(
-                    "Speed: " + speed.ToString("F1") +
-                    " | Forward: " +
-                    forwardSpeed.ToString("F1") +
-                    " | Slip: " +
-                    slipAngle.ToString("F1") +
-                    " | Motor: " +
-                    motor.ToString("F0") +
-                    " | Brake: " +
-                    currentBrake.ToString("F0") +
-                    " | Throttle: " +
-                    throttleAmount.ToString("F2") +
-                    " | Recovery: " +
-                    recoveringFromSlide +
-                    " | Drift: " + isDrifting +
-                    " | Steer: " +
-                    currentSteering.ToString("F1") +
-                    " | Assist: " +
-                    currentAssist.ToString("F2") +
-                    " | Grounded: " +
-                    CountGroundedWheels()
-                );
-
-                if (showWheelSlipDebug)
-                {
-                    DebugWheelSlip(frontLeftWheel, "Front Left");
-                    DebugWheelSlip(frontRightWheel, "Front Right");
-                    DebugWheelSlip(rearLeftWheel, "Rear Left");
-                    DebugWheelSlip(rearRightWheel, "Rear Right");
-                }
-            }
-        }
+        frontLeftWheel.brakeTorque = targetBrake;
+        frontRightWheel.brakeTorque = targetBrake;
+        rearLeftWheel.brakeTorque = targetBrake;
+        rearRightWheel.brakeTorque = targetBrake;
     }
 
-    // =====================================
-    // NEW: ARCADE DRIFT CORNERING ASSIST
-    // =====================================
-
-    void ApplyArcadeCorneringAssist(
-        float speed,
-        float forwardSpeed,
-        float slipAngle,
-        Vector3 flatVelocity,
-        float dt
-    )
-    {
-        float targetAssist = 0f;
-
-        bool sameDriftDirection =
-            Mathf.Abs(steeringInput) > 0.1f &&
-            steeringInput * driftDirection > 0f;
-
-        bool canAssist =
-            enableCorneringAssist &&
-            isDrifting &&
-            gasPressed &&
-            !brakePressed &&
-            sameDriftDirection &&
-            forwardSpeed > 2f &&
-            speed >= assistMinSpeed &&
-            CountGroundedWheels() >= 3;
-
-        if (canAssist)
-        {
-            float speedStrength =
-                Mathf.InverseLerp(
-                    assistMinSpeed,
-                    Mathf.Max(
-                        assistMinSpeed + 0.1f,
-                        assistFullSpeed
-                    ),
-                    speed
-                );
-
-            // Fade assistance at extreme slip.
-            float slipStrength =
-                1f - Mathf.InverseLerp(
-                    assistMaxSlipAngle * 0.6f,
-                    Mathf.Max(
-                        assistMaxSlipAngle * 0.6f + 0.1f,
-                        assistMaxSlipAngle
-                    ),
-                    Mathf.Abs(slipAngle)
-                );
-
-            targetAssist =
-                speedStrength *
-                slipStrength;
-        }
-
-        currentAssist = Mathf.MoveTowards(
-            currentAssist,
-            targetAssist,
-            Mathf.Max(0f, assistResponse) * dt
-        );
-
-        if (!canAssist ||
-            currentAssist <= 0f ||
-            flatVelocity.sqrMagnitude < 0.01f)
-        {
-            return;
-        }
-
-        // Direction perpendicular to velocity.
-        // This bends the path without directly
-        // accelerating along the travel direction.
-
-        Vector3 velocityDirection =
-            flatVelocity.normalized;
-
-        Vector3 rightOfVelocity =
-            Vector3.Cross(
-                Vector3.up,
-                velocityDirection
-            ).normalized;
-
-        Vector3 corneringDirection =
-            rightOfVelocity *
-            Mathf.Sign(driftDirection);
-
-        float acceleration =
-            Mathf.Max(0f, assistAcceleration) *
-            currentAssist;
-
-        rb.AddForce(
-            corneringDirection * acceleration,
-            ForceMode.Acceleration
-        );
-    }
-
-    // =========================
-    // ENGINE POWER CURVE
-    // =========================
-
-    float GetPowerFactor(float speed, float limit)
-    {
-        if (limit <= 0f)
-            return 0f;
-
-        float ratio = Mathf.Clamp01(speed / limit);
-
-        return 1f - Mathf.SmoothStep(
-            0f,
-            1f,
-            ratio
-        );
-    }
-
-    // =========================
-    // REAR WHEEL GRIP
-    // =========================
-
-    void ApplyRearGrip(float multiplier)
+    void ApplyRearTraction(float traction)
     {
         WheelFrictionCurve left =
             rearLeftWheel.sidewaysFriction;
@@ -645,59 +254,12 @@ public class KartController : MonoBehaviour
         WheelFrictionCurve right =
             rearRightWheel.sidewaysFriction;
 
-        left.stiffness =
-            originalRearLeftGrip * multiplier;
-
-        right.stiffness =
-            originalRearRightGrip * multiplier;
+        left.stiffness = originalLeftGrip * traction;
+        right.stiffness = originalRightGrip * traction;
 
         rearLeftWheel.sidewaysFriction = left;
         rearRightWheel.sidewaysFriction = right;
     }
-
-    // =========================
-    // WHEEL SLIP DEBUG
-    // =========================
-
-    void DebugWheelSlip(
-        WheelCollider wheel,
-        string wheelName
-    )
-    {
-        if (wheel == null)
-            return;
-
-        if (wheel.GetGroundHit(out WheelHit hit))
-        {
-            Debug.Log(
-                wheelName +
-                " | SideSlip: " +
-                hit.sidewaysSlip.ToString("F2") +
-                " | ForwardSlip: " +
-                hit.forwardSlip.ToString("F2")
-            );
-        }
-        else
-        {
-            Debug.Log(wheelName + " | Not Grounded");
-        }
-    }
-
-    int CountGroundedWheels()
-    {
-        int count = 0;
-
-        if (frontLeftWheel.isGrounded) count++;
-        if (frontRightWheel.isGrounded) count++;
-        if (rearLeftWheel.isGrounded) count++;
-        if (rearRightWheel.isGrounded) count++;
-
-        return count;
-    }
-
-    // =========================
-    // VISUAL WHEELS
-    // =========================
 
     void LateUpdate()
     {
@@ -707,10 +269,7 @@ public class KartController : MonoBehaviour
         UpdateWheel(rearRightWheel, rearRightMesh);
     }
 
-    void UpdateWheel(
-        WheelCollider wheel,
-        Transform mesh
-    )
+    void UpdateWheel(WheelCollider wheel, Transform mesh)
     {
         if (wheel == null || mesh == null)
             return;
@@ -726,26 +285,23 @@ public class KartController : MonoBehaviour
 
     void OnDisable()
     {
-        if (rb != null)
-            rb.linearDamping = originalDamping;
-
         if (rearLeftWheel != null &&
-            originalRearLeftGrip > 0f)
+            originalLeftGrip > 0f)
         {
             WheelFrictionCurve left =
                 rearLeftWheel.sidewaysFriction;
 
-            left.stiffness = originalRearLeftGrip;
+            left.stiffness = originalLeftGrip;
             rearLeftWheel.sidewaysFriction = left;
         }
 
         if (rearRightWheel != null &&
-            originalRearRightGrip > 0f)
+            originalRightGrip > 0f)
         {
             WheelFrictionCurve right =
                 rearRightWheel.sidewaysFriction;
 
-            right.stiffness = originalRearRightGrip;
+            right.stiffness = originalRightGrip;
             rearRightWheel.sidewaysFriction = right;
         }
     }
