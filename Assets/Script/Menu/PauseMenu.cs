@@ -73,6 +73,10 @@ public class PauseMenu : MonoBehaviour
         if (scene.name == MainMenuSceneName)
             return;
 
+        // Internal dev scene: no pause or restart keys there
+        if (scene.name == PhotoModeScene.SceneName)
+            return;
+
         if (FindAnyObjectByType<PauseMenu>() != null)
             return;
 
