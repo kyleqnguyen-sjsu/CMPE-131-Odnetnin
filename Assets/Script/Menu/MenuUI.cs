@@ -13,6 +13,7 @@ public static class MenuUI
 
     public static readonly Color BackdropColor = new Color(0.06f, 0.07f, 0.10f, 1f);
     public static readonly Color PauseDimColor = new Color(0.03f, 0.04f, 0.07f, 0.85f);
+    public static readonly Color HudPanelColor = new Color(0.04f, 0.05f, 0.08f, 0.72f);
 
     public static readonly Color ButtonNormal = new Color(0.16f, 0.18f, 0.24f, 1f);
     public static readonly Color ButtonHighlight = new Color(0.20f, 0.45f, 0.85f, 1f);
