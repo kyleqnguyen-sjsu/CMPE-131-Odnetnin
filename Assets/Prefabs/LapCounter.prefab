@@ -441,7 +441,7 @@ GameObject:
   - component: {fileID: 6019039036490656103}
   - component: {fileID: 4529758889348344441}
   m_Layer: 5
-  m_Name: RaceHUD
+  m_Name: LapCounter
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

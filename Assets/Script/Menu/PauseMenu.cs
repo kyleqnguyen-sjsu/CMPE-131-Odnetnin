@@ -12,7 +12,7 @@ using UnityEngine.UI;
 public class PauseMenu : MonoBehaviour
 {
     // How long P must be held before the game pauses
-    public const float HoldSeconds = 10f;
+    public const float HoldSeconds = 4f;
 
     // How long R must be held before the race restarts
     public const float RestartHoldSeconds = 1f;

@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 4136851386179108515}
   - component: {fileID: 6285581445603940679}
   - component: {fileID: 5294289712540392283}
+  - component: {fileID: 3862804225867551665}
   m_Layer: 0
   m_Name: Car
   m_TagString: Player
@@ -135,46 +136,25 @@ MonoBehaviour:
   frontRightMesh: {fileID: 6507835264918729702}
   rearLeftMesh: {fileID: 2953671000379931386}
   rearRightMesh: {fileID: 6277082216924108249}
-  motorTorque: 3200
-  maxSpeed: 35
-  reverseSpeed: 25
-  throttleResponse: 2.5
-  brakeForce: 6000
-  bothKeysBrakeForce: 7000
-  idleBrakeForce: 4000
-  brakeResponse: 10
-  stopThreshold: 0.2
-  maxSteerAngle: 24
-  steeringResponse: 120
-  highSpeedSteerMultiplier: 0
-  minimumDriftSpeed: 12
-  driftExitSpeed: 8
-  driftSteerAngle: 34
-  driftBuildSpeed: 0.4
-  counterSteerRecovery: 1.8
-  driftGrip: 0.94
-  minimumDriftGrip: 0.86
-  gripChangeSpeed: 2
-  gripRecoverySpeed: 3.5
-  normalDamping: 0.02
-  driftDamping: 0.03
-  dampingResponse: 2
-  driftMotorMultiplier: 1
-  useCustomCenterOfMass: 1
-  centerOfMassOffsetY: -0.35
-  enableSlideRecovery: 1
-  slideRecoveryAngle: 35
-  slideRecoveryExitAngle: 15
-  slideRecoveryMinSpeed: 8
-  enableCorneringAssist: 1
-  assistMinSpeed: 14
-  assistFullSpeed: 25
-  assistAcceleration: 12
-  assistMaxSlipAngle: 75
-  assistResponse: 5
-  showDebug: 1
-  showWheelSlipDebug: 0
-  debugInterval: 0.5
+  enginePowerHp: 707
+  topSpeedMph: 199
+  reverseSpeedMph: 30
+  throttleResponseSeconds: 0.4
+  brakingDecelG: 1
+  coastDecelG: 0.5
+  maxSteerAngleDeg: 27
+  steeringResponseDegPerSec: 160
+  tireGripG: 1
+  driftGripG: 0.72
+  minDriftSpeedMph: 27
+  driftSteerAngleDeg: 34
+  centerOfMassYMeters: -0.35
+  engineAudio: {fileID: 3862804225867551665}
+  idlePitch: 0.8
+  topSpeedPitch: 2.2
+  idleVolume: 0.4
+  fullGasVolume: 1
+  audioResponse: 6
 --- !u!54 &5294289712540392283
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -202,6 +182,103 @@ Rigidbody:
   m_Interpolate: 1
   m_Constraints: 0
   m_CollisionDetection: 1
+--- !u!82 &3862804225867551665
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 576006571967138416}
+  m_Enabled: 1
+  serializedVersion: 4
+  OutputAudioMixerGroup: {fileID: 0}
+  m_audioClip: {fileID: 0}
+  m_Resource: {fileID: 8300000, guid: 7c2a9364a5853490da0c6967f32c3ca0, type: 3}
+  m_PlayOnAwake: 1
+  m_Volume: 1
+  m_Pitch: 1
+  Loop: 1
+  Mute: 0
+  Spatialize: 0
+  SpatializePostEffects: 0
+  Priority: 128
+  DopplerLevel: 1
+  MinDistance: 1
+  MaxDistance: 500
+  Pan2D: 0
+  rolloffMode: 0
+  BypassEffects: 0
+  BypassListenerEffects: 0
+  BypassReverbZones: 0
+  rolloffCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  panLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  spreadCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  reverbZoneMixCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
 --- !u!1001 &1272464090156549051
 PrefabInstance:
   m_ObjectHideFlags: 0

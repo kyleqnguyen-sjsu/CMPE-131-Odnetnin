@@ -9,9 +9,9 @@ public class LapCounter : MonoBehaviour
     public LapDataSO lapData;
 
     public int totalLaps = 3;
-    public int totalCheckpointIDs = 4; 
+    public int totalCheckpointIDs = 5; 
     
-    private int currentCheckpointID = 0;
+    public int currentCheckpointID = 0;
     private int currentLap = 0;
     private bool raceFinished = false;
     

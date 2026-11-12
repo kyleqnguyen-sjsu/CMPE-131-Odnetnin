@@ -129,6 +129,22 @@ public class KartController : MonoBehaviour
     public float centerOfMassYMeters = -0.35f;
 
 
+    [Header("Engine Sound")]
+
+    // The AudioSource that plays the acceleration loop
+    public AudioSource engineAudio;
+
+    // Pitch at idle and at top speed
+    public float idlePitch = 0.8f;
+    public float topSpeedPitch = 2.2f;
+
+    // Volume when coasting and when on full gas
+    public float idleVolume = 0.4f;
+    public float fullGasVolume = 1f;
+
+    // How fast the sound follows changes (higher = snappier)
+    public float audioResponse = 6f;
+    
     // ========================================================
     //  FIXED NUMBERS  (fine to leave alone)
     // ========================================================
@@ -314,12 +330,21 @@ public class KartController : MonoBehaviour
         wheelbase = MeasureWheelbase();
 
         ApplySuspension();
+        
+        if (engineAudio != null)
+        {
+            engineAudio.loop = true;
+            engineAudio.pitch = idlePitch;
+            engineAudio.volume = idleVolume;
+            engineAudio.Play();
+        }
     }
 
     // Runs every frame: read the keyboard
     void Update()
     {
         ReadInput();
+        UpdateEngineSound();
     }
 
     // Runs every physics step: drive the car
@@ -361,7 +386,31 @@ public class KartController : MonoBehaviour
             SetSidewaysGrip(rearRightWheel, rearRightBaseGrip);
     }
 
+    // ========================================================
+    //  ENGINE SOUND
+    // ========================================================
 
+    void UpdateEngineSound()
+    {
+        if (engineAudio == null)
+            return;
+
+        // 0 = stopped, 1 = top speed
+        float speedShare = Mathf.Clamp01(CurrentSpeed / Mathf.Max(1f, TopSpeedMps));
+
+        // Pitch rises with speed, with a small bump when you press the gas
+        float targetPitch = Mathf.Lerp(idlePitch, topSpeedPitch, speedShare);
+        targetPitch += throttle * 0.15f;
+
+        // Louder when on the gas
+        float targetVolume = Mathf.Lerp(idleVolume, fullGasVolume, throttle);
+
+        float t = audioResponse * Time.deltaTime;
+
+        engineAudio.pitch = Mathf.Lerp(engineAudio.pitch, targetPitch, t);
+        engineAudio.volume = Mathf.Lerp(engineAudio.volume, targetVolume, t);
+    }
+    
     // ========================================================
     //  INPUT
     // ========================================================

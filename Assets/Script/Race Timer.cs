@@ -5,17 +5,22 @@ using TMPro;
 public class RaceTimer : MonoBehaviour
 {
     public TMP_Text timerText;
-
+    public LapCounter lapCounter;
     private double elapsedTime = 0.0;
-    private bool isRunning = true;
+    private bool isRunning = false;
 
+    void Start()
+    {
+        lapCounter = FindAnyObjectByType<LapCounter>();
+    }
     void Update()
     {
+        UpdateTimerText();
+        if (lapCounter.currentCheckpointID == 1) isRunning = true;
         if (!isRunning)
             return;
 
         elapsedTime += Time.deltaTime;
-        UpdateTimerText();
     }
 
     void UpdateTimerText()
